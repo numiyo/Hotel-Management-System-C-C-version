@@ -1,0 +1,3 @@
+C:/Users/Num1/Desktop/酒店管理系统/Hotel management system(C++)/cmake-build-debug/CMakeFiles/Hotel_management_system_C___.dir
+C:/Users/Num1/Desktop/酒店管理系统/Hotel management system(C++)/cmake-build-debug/CMakeFiles/edit_cache.dir
+C:/Users/Num1/Desktop/酒店管理系统/Hotel management system(C++)/cmake-build-debug/CMakeFiles/rebuild_cache.dir
