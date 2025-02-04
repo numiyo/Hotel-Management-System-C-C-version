@@ -28,10 +28,8 @@
 */
 
 //To Do List
-//用户预定房间之前和之后的那一部分空白的时间增加可用于订房间的时间（订房间功能继续实现）。 √
-//但是还没实现多次在空白时间段预定该房间，所以available状态还是不改了，就这样就好了，后面完全实现会更改。 ×
-//实现check out退房功能，扣掉该天数内应该交的钱，并扣除违约金=剩下天数每天房租价*10%，返还扣除违约金后剩下的金额。 √
-//实现my_room功能 √
+//查询空房间的功能（查询当前时段可用的房间，或者基于价格区间查可以租的房间，或者通过查询房间类型来）
+//管理员对用户的增删改查（用户账号，密码，删除用户，用户余额，用户角色）
 
 #include <iostream>
 #include <fstream>
@@ -864,8 +862,26 @@ void Add_Room () {
     vector<Room> rooms = Load_Rooms();
     View_Rooms(Load_Rooms());
     Room newRoom;
+    string input;
     cout << "Enter room number: ";
-    cin >> newRoom.roomNumber;
+    cin >> input;
+    try {
+        int NewroomNumber = stoi(input);
+    }
+    catch (invalid_argument &) {
+        cout << "Invalid_argument." << endl;
+        return;
+    }
+    catch (out_of_range &) {
+        cout << "Out of range." << endl;
+        return;
+    }
+    catch (...) {
+        cout << "Something else error." << endl;
+        return;
+    }
+    int NewroomNumber = stoi(input);
+    newRoom.roomNumber = NewroomNumber;
     // 检查房间号是否已存在
     for (const auto& room : rooms) {
         if (room.roomNumber == newRoom.roomNumber) {
@@ -873,10 +889,27 @@ void Add_Room () {
             return;
         }
     }
-    cout << "Enter room type (Single, Double, Suite): ";
+    cout << "Enter room type (Single, Double, Suite, etc): ";
     cin >> newRoom.roomType;
     cout << "Enter room price per day: ";
-    cin >> newRoom.price;
+    cin >> input;
+    try {
+        double NewroomPrice = stod(input);
+    }
+    catch (invalid_argument &) {
+        cout << "Invalid_argument." << endl;
+        return;
+    }
+    catch (out_of_range &) {
+        cout << "Out of range." << endl;
+        return;
+    }
+    catch (...) {
+        cout << "Something else error." << endl;
+        return;
+    }
+    double NewroomPrice = stod(input);
+    newRoom.price = NewroomPrice;
     newRoom.reservedCount = 0;
     newRoom.bookedBy = "None";
     newRoom.startDate = GetCurrentDate();
@@ -894,9 +927,25 @@ void Delete_Room() {
         return;
     }
     View_Rooms(Load_Rooms());
-    int roomNumber;
+    string input;
     cout << "Enter the room number to delete: ";
-    cin >> roomNumber;
+    cin >> input;
+    try {
+        int roomNumber = stoi(input);
+    }
+    catch (invalid_argument &) {
+        cout << "Invalid_argument." << endl;
+        return;
+    }
+    catch (out_of_range &) {
+        cout << "Out of range." << endl;
+        return;
+    }
+    catch (...) {
+        cout << "Something else error." << endl;
+        return;
+    }
+    int roomNumber = stoi(input);
     for (auto it = rooms.begin(); it != rooms.end(); ++it) {
         if (it->roomNumber == roomNumber) {
             rooms.erase(it);
@@ -916,15 +965,48 @@ void Modify_Room () {
         return;
     }
     View_Rooms(Load_Rooms());
-    int roomNumber;
+    string input;
     cout << "Enter the room number to modify: ";
-    cin >> roomNumber;
+    cin >> input;
+    try {
+        int roomNumber = stoi(input);
+    }
+    catch (invalid_argument &) {
+        cout << "Invalid_argument." << endl;
+        return;
+    }
+    catch (out_of_range &) {
+        cout << "Out of range." << endl;
+        return;
+    }
+    catch (...) {
+        cout << "Something else error." << endl;
+        return;
+    }
+    int roomNumber = stoi(input);
     for (auto& room : rooms) {
         if (room.roomNumber == roomNumber) {
-            cout << "Enter new room type (Single, Double, Suite): ";
+            cout << "Enter new room type (Single, Double, Suite, etc): ";
             cin >> room.roomType;
             cout << "Enter new room price per day: ";
-            cin >> room.price;
+            cin >> input;
+            try {
+                double NewroomPrice = stod(input);
+            }
+            catch (invalid_argument &) {
+                cout << "Invalid_argument." << endl;
+                return;
+            }
+            catch (out_of_range &) {
+                cout << "Out of range." << endl;
+                return;
+            }
+            catch (...) {
+                cout << "Something else error." << endl;
+                return;
+            }
+            double NewroomPrice = stod(input);
+            room.price = NewroomPrice;
             Save_Rooms(rooms);
             cout << "Room information modified successfully." << endl;
             return;
@@ -1010,9 +1092,25 @@ void Process_Request() {
     if (requests.empty()) {
         return;
     }
-    int requestNumber;
+    string input;
     cout << "Enter the request number to process: ";
-    cin >> requestNumber;
+    cin >> input;
+    try {
+        int requestNumber = stoi(input);
+    }
+    catch (invalid_argument &) {
+        cout << "Invalid_argument." << endl;
+        return;
+    }
+    catch (out_of_range &) {
+        cout << "Out of range." << endl;
+        return;
+    }
+    catch (...) {
+        cout << "Something else error." << endl;
+        return;
+    }
+    int requestNumber = stoi(input);
     auto it = find_if(requests.begin(), requests.end(), [requestNumber](const Request& req) {
         return req.requestNumber == requestNumber;
     });
