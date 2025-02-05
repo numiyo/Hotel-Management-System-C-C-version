@@ -27,10 +27,6 @@
 ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
 */
 
-//To Do List
-//查询空房间的功能（查询当前时段可用的房间，或者基于价格区间查可以租的房间，或者通过查询房间类型来）
-//管理员对用户的增删改查（用户账号，密码，删除用户，用户余额，用户角色）
-
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -43,6 +39,7 @@ using namespace std;
 //现在登录的账号
 string Now_User;
 
+//如果要实现多机器同时操作共享文件，可以把以下布尔数拉进用户结构体，再进行解析以及读取修改操作实现单一用户对应状态，本项目只是为了实现单机本地非联网构建的学习项目
 //登录状态
 bool IsUserLogin = false;
 
@@ -85,6 +82,7 @@ struct Request {
     string requestDate;//请求时间
 };
 
+//时间
 //获取当前时间
 string GetCurrentDate () {
     time_t now = time(0);//获取当前时间
@@ -108,6 +106,7 @@ int DaysBetweenDates (const string& start, const string& end) {
     return static_cast<int>(seconds / (60 * 60 * 24));
 }
 
+//用户
 //用户数据读取
 vector<User> Load_Users () {
     vector<User> users;
@@ -273,6 +272,7 @@ void Recharge_Balance () {
     IsTradeCompleted = true;
 }
 
+//房间
 //按房间号排序
 bool compareRoomsByNumber (const Room& a, const Room& b) {
     return a.roomNumber < b.roomNumber;
@@ -430,7 +430,7 @@ void Save_Rooms (const vector<Room>& rooms) {
     file.close();
 }
 
-//用户订房功能
+//订房功能
 void Book_Room (string number) {
     vector<Room> rooms = Load_Rooms();
     try {
@@ -561,7 +561,7 @@ bool HasLaterBookingByCurrentUser (const Room& room) {
     }) != room.later_bookedBy.end();
 }
 
-//用户退房功能
+//退房功能
 void Cancel_Booking (string number) {
     vector<Room> rooms = Load_Rooms();
     try {
@@ -689,6 +689,154 @@ void Cancel_Booking (string number) {
     cout << "Cancellation successful. \nRefund amount: $" << totalled_refund << " (Penalty: $" << totalled_penalty << ")" << endl;
 }
 
+//查房功能
+void Find_Rooms (int order) {
+    if (order == 1) {
+        vector<Room> rooms = Load_Rooms();
+        string startDate, endDate;
+        //懒得一直get了-_-
+        string currentDate = GetCurrentDate();
+        //获取用户输入的起始日期和结束日期
+        cout << "Enter the check-in date (YYYY-MM-DD): ";
+        cin >> startDate;
+        cout << "Enter the check-out date (YYYY-MM-DD): ";
+        cin >> endDate;
+        //检查日期格式和有效性
+        if (startDate.length() != 10 || endDate.length() != 10 || startDate < currentDate || startDate > endDate) {
+            cout << "Invalid date range.\nThe start date must be after the current date and the end date must be after the start date." << endl;
+            return;
+        }
+        bool hasAvailableRooms = false;
+        cout << setw(7) << left << "Room"
+             << setw(9) << left << "Type"
+             << setw(8) << left << "Price"
+             << setw(12) << left << "Reserved"
+             << setw(12) << left << "Booked-By"
+             << setw(13) << left << "Start-Date"
+             << setw(12) << left << "End-Date" << endl;
+        for (const auto &room: rooms) {
+            bool isAvailable = true;
+            //检查当前预订是否冲突
+            if (room.bookedBy != "None") {
+                if (!(startDate > room.endDate || endDate < room.startDate)) {
+                    isAvailable = false;
+                }
+            }
+            //检查后续预订是否冲突
+            for (const auto &later: room.later_bookedBy) {
+                if (!(startDate > later.second.second || endDate < later.second.first)) {
+                    isAvailable = false;
+                    break;
+                }
+            }
+            if (isAvailable) {
+                hasAvailableRooms = true;
+                cout << setw(7) << left << room.roomNumber
+                     << setw(9) << left << room.roomType
+                     << "$" << setw(10) << left << room.price
+                     << setw(11) << left << room.reservedCount
+                     << setw(10) << left << room.bookedBy
+                     << setw(12) << left << room.startDate
+                     << setw(12) << left << room.endDate << endl;
+            }
+        }
+        if (!hasAvailableRooms) {
+            cout << "No available rooms for the specified date range." << endl;
+        }
+    } else if (order == 2) {
+        vector<Room> rooms = Load_Rooms();
+        string roomType;
+        string currentDate = GetCurrentDate();
+        bool hasAvailableRooms = false;
+        //输入要查询的房间类型
+        cout << "Enter the Type of rooms（Single, Double, Suite, etc）: ";
+        cin >> roomType;
+        cout << setw(7) << left << "Room"
+             << setw(9) << left << "Type"
+             << setw(8) << left << "Price"
+             << setw(12) << left << "Reserved"
+             << setw(12) << left << "Booked-By"
+             << setw(13) << left << "Start-Date"
+             << setw(12) << left << "End-Date" << endl;
+        for (const auto &room: rooms) {
+            if (room.roomType == roomType) {
+                hasAvailableRooms = true;
+                //输出符合条件的房间信息
+                cout << setw(7) << left << room.roomNumber
+                     << setw(9) << left << room.roomType
+                     << "$" << setw(10) << left << room.price
+                     << setw(11) << left << room.reservedCount
+                     << setw(10) << left << room.bookedBy
+                     << setw(12) << left << room.startDate
+                     << setw(12) << left << room.endDate << endl;
+            }
+        }
+        //如果没有找到符合条件的房间，给出提示
+        if (!hasAvailableRooms) {
+            cout << "No available rooms for the specified Room Type." << endl;
+        }
+    } else if (order == 3) {
+        vector<Room> rooms = Load_Rooms();
+        string minPrice_str, maxPrice_str;
+        string currentDate = GetCurrentDate();
+        bool hasAvailableRooms = false;
+        //提示用户输入最低价格和最高价格
+        cout << "Enter the minimum price: $";
+        cin >> minPrice_str;
+        cout << "Enter the maximum price: $";
+        cin >> maxPrice_str;
+        try {
+            double minPrice = stod(minPrice_str);
+            double maxPrice = stod(maxPrice_str);
+        }
+        catch (invalid_argument &) {
+            cout << "Invalid_argument." << endl;
+            return;
+        }
+        catch (out_of_range &) {
+            cout << "Out of range." << endl;
+            return;
+        }
+        catch (...) {
+            cout << "Something else error." << endl;
+            return;
+        }
+        double minPrice = stod(minPrice_str);
+        double maxPrice = stod(maxPrice_str);
+        //检查价格区间的有效性
+        if (minPrice > maxPrice) {
+            cout << "Invalid price range.\nThe minimum price cannot be higher than the maximum price." << endl;
+            return;
+        }
+        cout << setw(7) << left << "Room"
+             << setw(9) << left << "Type"
+             << setw(8) << left << "Price"
+             << setw(12) << left << "Reserved"
+             << setw(12) << left << "Booked-By"
+             << setw(13) << left << "Start-Date"
+             << setw(12) << left << "End-Date" << endl;
+        //遍历所有房间
+        for (const auto& room : rooms) {
+            //检查房间价格是否在指定区间内
+            if (room.price >= minPrice && room.price <= maxPrice) {
+                hasAvailableRooms = true;
+                //输出符合条件的房间信息
+                cout << setw(7) << left << room.roomNumber
+                     << setw(9) << left << room.roomType
+                     << "$" << setw(10) << left << room.price
+                     << setw(11) << left << room.reservedCount
+                     << setw(10) << left << room.bookedBy
+                     << setw(12) << left << room.startDate
+                     << setw(12) << left << room.endDate << endl;
+            }
+        }
+        //如果没有找到符合条件的房间，给出提示
+        if (!hasAvailableRooms) {
+            cout << "No available rooms found within the specified price range." << endl;
+        }
+    }
+}
+
 //setting（更改数据信息板块）
 //用户更改用户名
 void Change_Username (string newUsername) {
@@ -763,7 +911,7 @@ void Change_Username (string newUsername) {
     IsUserLogin = false;
 }
 
-// 更改密码
+//更改密码
 void Change_Password (string newPassword) {
     vector<User> users = Load_Users();
     //找到当前用户并更新密码
@@ -946,6 +1094,10 @@ void Delete_Room() {
         return;
     }
     int roomNumber = stoi(input);
+    string choose;
+    cout << "Really (y/n)? : ";
+    cin >> choose;
+    if (choose != "Y" && choose != "y") return;
     for (auto it = rooms.begin(); it != rooms.end(); ++it) {
         if (it->roomNumber == roomNumber) {
             rooms.erase(it);
@@ -1013,6 +1165,303 @@ void Modify_Room () {
         }
     }
     cout << "Room not found." << endl;
+}
+
+//所有用户信息
+void View_Users() {
+    vector<User> users = Load_Users();
+    if (users.empty()) {
+        cout << "No users found." << endl;
+        return;
+    }
+    cout << setw(11) << left << "Username"
+         << setw(11) << left << "Password"
+         << setw(16) << left << "Role"
+         << setw(10) << left << "Balance" << endl;
+    for (const auto& user : users) {
+        cout << setw(11) << left << user.username
+             << setw(11) << left << user.password
+             << setw(16) << left << user.role
+             << setw(10) << left << user.balance << endl;
+    }
+}
+
+//添加用户
+void Add_User () {
+    View_Users();
+    vector<User> users = Load_Users();
+    string newUsername;
+    cout << "Please enter the new user's username: ";
+    cin >> newUsername;
+    //检查用户名是否已存在
+    for (const auto& user : users) {
+        if (user.username == newUsername) {
+            cout << "This username already exists. Please choose another one." << endl;
+            return;
+        }
+    }
+    string newPassword;
+    cout << "Please enter the new user's password: ";
+    cin >> newPassword;
+    string newRole;
+    cout << "Please enter the new user's role (Ordinary member, VIP member, Administrator): ";
+    cin >> newRole;
+    if (newRole != "Ordinary member" && newRole != "VIP member" && newRole != "Administrator") {
+        cout << "Invalid role. Please enter a valid role (Ordinary member, VIP member, Administrator)." << endl;
+        return;
+    }
+    string initialBalance_str;
+    cout << "Please enter the new user's initial balance: $";
+    cin >> initialBalance_str;
+    try {
+        double initialBalance = stoi(initialBalance_str);
+    }
+    catch (invalid_argument &) {
+        cout << "Invalid_argument." << endl;
+        return;
+    }
+    catch (out_of_range &) {
+        cout << "Out of range." << endl;
+        return;
+    }
+    catch (...) {
+        cout << "Something else error." << endl;
+        return;
+    }
+    double initialBalance = stoi(initialBalance_str);
+    if (initialBalance < 0.0) {
+        cout << "The initial balance cannot be negative." << endl;
+        return;
+    }
+    User newUser;
+    newUser.username = newUsername;
+    newUser.password = newPassword;
+    newUser.role = newRole;
+    newUser.balance = initialBalance;
+    users.push_back(newUser);
+    Save_Users(users);
+    cout << "New user " << newUsername << " has been added successfully." << endl;
+}
+
+//删除用户
+void Delete_User () {
+    View_Users();
+    vector<User> users = Load_Users();
+    string targetUsername;
+    cout << "Please enter the username of the user you want to delete: ";
+    cin >> targetUsername;
+    string choose;
+    cout << "Really (y/n)? : ";
+    cin >> choose;
+    if (choose != "Y" && choose != "y") return;
+    //查找要删除的用户
+    auto userIt = find_if(users.begin(), users.end(), [&targetUsername](const User& user) {
+        return user.username == targetUsername;
+    });
+    //若未找到该用户，输出提示信息并返回
+    if (userIt == users.end()) {
+        cout << "User with username " << targetUsername << " not found." << endl;
+        return;
+    }
+    //从用户列表中移除该用户
+    users.erase(userIt);
+    //将更新后的用户列表保存到文件
+    Save_Users(users);
+    //加载所有房间信息
+    vector<Room> rooms = Load_Rooms();
+    for (auto& room : rooms) {
+        //移除该用户在房间后续预订列表中的信息
+        auto laterIt = room.later_bookedBy.begin();
+        while (laterIt != room.later_bookedBy.end()) {
+            if (laterIt->first == targetUsername) {
+                laterIt = room.later_bookedBy.erase(laterIt);
+                room.reservedCount--;
+            } else {
+                ++laterIt;
+            }
+        }
+        //若当前房间由该用户预订，将房间状态重置
+        if (room.bookedBy == targetUsername) {
+            room.bookedBy = "None";
+            room.startDate = GetCurrentDate();
+            room.endDate = GetCurrentDate();
+            room.reservedCount--;
+            //若有后续预订，将下一个预订提前
+            if (!room.later_bookedBy.empty()) {
+                room.bookedBy = room.later_bookedBy.front().first;
+                room.startDate = room.later_bookedBy.front().second.first;
+                room.endDate = room.later_bookedBy.front().second.second;
+                room.later_bookedBy.erase(room.later_bookedBy.begin());
+            }
+        }
+    }
+    //将更新后的房间信息保存到文件
+    Save_Rooms(rooms);
+    //加载所有充值请求信息
+    vector<Request> requests;
+    ifstream requestFile(RequestData);
+    string line;
+    while (getline(requestFile, line)) {
+        Request request;
+        size_t pos = 0;
+        string token;
+        vector<string> tokens;
+        while (!line.empty()) {
+            pos = line.find('|');
+            if (pos != string::npos) {
+                token = line.substr(0, pos);
+                tokens.push_back(token);
+                line.erase(0, pos + 1);
+            } else {
+                token = line;
+                tokens.push_back(token);
+                line.erase();
+            }
+        }
+        request.requestNumber = stoi(tokens[0]);
+        request.username = tokens[1];
+        request.Top_up = stod(tokens[2]);
+        request.requestDate = tokens[3];
+        requests.push_back(request);
+    }
+    requestFile.close();
+    //移除与该用户相关的充值请求
+    requests.erase(remove_if(requests.begin(), requests.end(), [&targetUsername](const Request& request) {
+        return request.username == targetUsername;
+    }), requests.end());
+    //将更新后的充值请求信息保存到文件
+    ofstream outRequestFile(RequestData);
+    for (const auto& request : requests) {
+        outRequestFile << request.requestNumber << "|" << request.username << "|" << request.Top_up << "|"
+                       << request.requestDate << endl;
+    }
+    outRequestFile.close();
+    cout << "User with username " << targetUsername << " has been deleted successfully." << endl;
+}
+
+//修改用户信息
+void Modify_User () {
+    View_Users();
+    vector<User> users = Load_Users();
+    string targetUsername;
+    cout << "Please enter the username of the user you want to modify: ";
+    cin >> targetUsername;
+    //查找用户直接赋值it（呜呜呜呜早知道能这样就一直这样了）
+    auto it = find_if(users.begin(), users.end(), [&targetUsername](const User& user) {
+        return user.username == targetUsername;
+    });
+    if (it == users.end()) {
+        cout << "User not found." << endl;
+        return;
+    }
+    string choice;
+    while (true) {
+        cout << "\nWhat information do you want to modify?" << endl;
+        cout << "1. Username" << endl;
+        cout << "2. Password" << endl;
+        cout << "3. Role" << endl;
+        cout << "4. Balance" << endl;
+        cout << "0. Exit modification" << endl;
+        cout << "select >> ";
+        cin >> choice;
+        if (choice == "0") {
+            break;
+        } else if (choice == "1") {
+            string newUsername;
+            cout << "Please enter the new username: ";
+            cin >> newUsername;
+            //检查新用户名是否已存在
+            for (const auto& user : users) {
+                if (user.username == newUsername) {
+                    cout << "This username already exists. Please choose another one." << endl;
+                    continue;
+                }
+            }
+            string oldUsername = it->username;
+            it->username = newUsername;
+            //更新房间数据中的用户名
+            vector<Room> rooms = Load_Rooms();
+            for (auto& room : rooms) {
+                if (room.bookedBy == oldUsername) {
+                    room.bookedBy = newUsername;
+                }
+                for (auto& later : room.later_bookedBy) {
+                    if (later.first == oldUsername) {
+                        later.first = newUsername;
+                    }
+                }
+            }
+            Save_Rooms(rooms);
+            //更新请求数据中的用户名
+            vector<Request> requests;
+            ifstream requestFile(RequestData);
+            string line;
+            while (getline(requestFile, line)) {
+                Request request;
+                size_t pos = 0;
+                string token;
+                vector<string> tokens;
+                while (!line.empty()) {
+                    pos = line.find('|');
+                    if (pos != string::npos) {
+                        token = line.substr(0, pos);
+                        tokens.push_back(token);
+                        line.erase(0, pos + 1);
+                    } else {
+                        token = line;
+                        tokens.push_back(token);
+                        line.erase();
+                    }
+                }
+                request.requestNumber = stoi(tokens[0]);
+                request.username = tokens[1];
+                request.Top_up = stod(tokens[2]);
+                request.requestDate = tokens[3];
+                if (request.username == oldUsername) {
+                    request.username = newUsername;
+                }
+                requests.push_back(request);
+            }
+            requestFile.close();
+            ofstream outRequestFile(RequestData);
+            for (const auto& request : requests) {
+                outRequestFile << request.requestNumber << "|" << request.username << "|" << request.Top_up << "|"
+                               << request.requestDate << endl;
+            }
+            outRequestFile.close();
+            cout << "Username modified successfully." << endl;
+        } else if (choice == "2") {
+            string newPassword;
+            cout << "Please enter the new password: ";
+            cin >> newPassword;
+            it->password = newPassword;
+            cout << "Password modified successfully." << endl;
+        } else if (choice == "3") {
+            string newRole;
+            cout << "Please enter the new role (Ordinary member, VIP member, Administrator): ";
+            cin >> newRole;
+            if (newRole != "Ordinary member" && newRole != "VIP member" && newRole != "Administrator") {
+                cout << "Invalid role. Please enter a valid role (Ordinary member, VIP member, Administrator)." << endl;
+                continue;
+            }
+            it->role = newRole;
+            cout << "Role modified successfully." << endl;
+        } else if (choice == "4") {
+            double newBalance;
+            cout << "Please enter the new balance: $";
+            cin >> newBalance;
+            if (newBalance < 0) {
+                cout << "Balance cannot be negative. Please enter a valid balance." << endl;
+                continue;
+            }
+            it->balance = newBalance;
+            cout << "Balance modified successfully." << endl;
+        } else {
+            cout << "Invalid choice. Please try again." << endl;
+        }
+    }
+    //保存更新后的用户数据
+    Save_Users(users);
 }
 
 //查看请求信息
@@ -1127,7 +1576,7 @@ void Process_Request() {
         for (auto& user : users) {
             if (user.username == it->username) {
                 user.balance += it->Top_up;
-                if (it->Top_up > 1000 && user.role != "Administrator" && user.role != "VIP member") {
+                if (it->Top_up >= 1000 && user.role != "Administrator" && user.role != "VIP member") {
                     user.role = "VIP member";
                 }
                 break;
@@ -1148,6 +1597,7 @@ void Process_Request() {
     outFile.close();
 }
 
+//系统运行
 //初始化数据文件（检测文件丢失或首次启动）
 void System_Initialize () {
     //检测文件完整性
@@ -1320,6 +1770,73 @@ void Side_Menu (int order) {
             cout << "The discount you can enjoy is " << setprecision(0) << fixed
                  << (1.0 - View_Discount(View_Role())) * 100 << "%" << endl;
             cout << endl;
+            for (int i = 0; i < 48; i++) {
+                if (i == 28) cout << "1.Find-by-Date";
+                else cout << " ";
+            }
+            cout << endl;
+            for (int i = 0; i < 48; i++) {
+                if (i == 28) cout << "2.Find-by-Type";
+                else cout << " ";
+            }
+            cout << endl;
+            for (int i = 0; i < 48; i++) {
+                if (i == 28) cout << "3.Find-by-Price";
+                else cout << " ";
+            }
+            cout << endl << endl;
+            for (int j = 0; j < 65; j++) {
+                if (j == 57) cout << GetCurrentDate();
+                else cout << " ";
+            }
+            cout << endl;
+            for (int i = 0; i < 55; i++) {
+                if (i == 27) cout << "Welcome To Hotel";
+                else cout << "_";
+            }
+            cout << endl;
+            cout << "Do you want to find the available rooms (y/n)? : ";
+            char choose;
+            cin >> choose;
+            if (choose == 'Y' || choose == 'y') {
+                string n;
+                cout << "select >> ";
+                cin >> n;
+                if (n == "1" || n == "2" || n == "3") {
+                    Find_Rooms(stoi(n));
+                } else {
+                    cout << "Invalid_argument." << endl;
+                }
+                cout << "Do you want to exit (y/n)? : ";
+                char choose;
+                cin >> choose;
+                if (choose == 'Y' || choose == 'y') {
+                    break;
+                }
+            } else if (choose == 'N' || choose == 'n') {
+                break;
+            } else {
+                cout << "Do you want to exit (y/n)? : ";
+                char choose;
+                cin >> choose;
+                if (choose == 'Y' || choose == 'y') {
+                    break;
+                }
+            }
+        }
+    } else if (order == 2) {
+        while (true) {
+            system("cls");
+            for (int i = 0; i < 48; i++) {
+                if (i == 23) cout << "Hotel Management System";
+                else cout << "_";
+            }
+            cout << endl;
+            cout << "Welcome, " << Now_User << "! (" << View_Role() << ")" << endl;
+            View_Balance();
+            cout << "The discount you can enjoy is " << setprecision(0) << fixed
+                 << (1.0 - View_Discount(View_Role())) * 100 << "%" << endl;
+            cout << endl;
             for (int j = 0; j < 39; j++) {
                 if (j == 30) cout << "Room_List";
                 else cout << " ";
@@ -1369,7 +1886,7 @@ void Side_Menu (int order) {
             }
         }
         return;
-    } else if (order == 2) {
+    } else if (order == 3) {
         while (true) {
             system("cls");
             for (int i = 0; i < 48; i++) {
@@ -1430,7 +1947,7 @@ void Side_Menu (int order) {
             }
         }
         return;
-    } else if (order == 3) {
+    } else if (order == 4) {
         while (true) {
             system("cls");
             for (int i = 0; i < 48; i++) {
@@ -1467,7 +1984,7 @@ void Side_Menu (int order) {
                 break;
             }
         }
-    } else if (order == 4) {
+    } else if (order == 5) {
         while (true) {
             system("cls");
             for (int i = 0; i < 48; i++) {
@@ -1549,7 +2066,7 @@ void Side_Menu (int order) {
                 break;
             }
         }
-    } else if (order == 5) {
+    } else if (order == 6) {
         while (true) {
             system("cls");
             for (int i = 0; i < 26; i++) {
@@ -1654,7 +2171,7 @@ void Side_Menu (int order) {
                 system("color 07");
             }
         }
-    } else if (order == 6) {
+    } else if (order == 7) {
         while (true) {
             system("cls");
             for (int i = 0; i < 26; i++) {
@@ -1680,7 +2197,22 @@ void Side_Menu (int order) {
             }
             cout << endl;
             for (int j = 0; j < 39; j++) {
-                if (j == 17) cout << "4.Process-Request";
+                if (j == 17) cout << "4.Add-User";
+                else cout << " ";
+            }
+            cout << endl;
+            for (int j = 0; j < 39; j++) {
+                if (j == 17) cout << "5.Delete-User";
+                else cout << " ";
+            }
+            cout << endl;
+            for (int j = 0; j < 39; j++) {
+                if (j == 17) cout << "6.Modify-User";
+                else cout << " ";
+            }
+            cout << endl;
+            for (int j = 0; j < 39; j++) {
+                if (j == 17) cout << "7.Process-Request";
                 else cout << " ";
             }
             cout << endl;
@@ -1715,6 +2247,15 @@ void Side_Menu (int order) {
                     Modify_Room();
                     break;
                 case '4':
+                    Add_User();
+                    break;
+                case '5':
+                    Delete_User();
+                    break;
+                case '6':
+                    Modify_User();
+                    break;
+                case '7':
                     View_Requests();
                     Process_Request();
                     break;
@@ -1741,34 +2282,40 @@ void Main_Menu () {
     cout << "Welcome, " << Now_User << "! (" << View_Role() << ")" << endl;
     View_Balance();
     cout << "The discount you can enjoy is " << setprecision(0) << fixed << (1.0 - View_Discount(View_Role())) * 100 << "%" << endl;
+    cout << endl;
     for (int j = 0; j < 39; j ++) {
-        if (j == 18) cout << "1.Check-In";
+        if (j == 18) cout << "1.Available";
+        else cout << " ";
+    }
+    cout << endl;
+    for (int j = 0; j < 39; j ++) {
+        if (j == 18) cout << "2.Check-In";
         else cout << " ";
     }
     cout << endl;
     for (int j = 0; j < 38; j ++) {
-        if (j == 18) cout << "2.Check-Out";
+        if (j == 18) cout << "3.Check-Out";
         else cout << " ";
     }
     cout << endl;
     for (int j = 0; j < 40; j ++) {
-        if (j == 18) cout << "3.My-room";
+        if (j == 18) cout << "4.My-room";
         else cout << " ";
     }
     cout << endl;
     for (int j = 0; j < 39; j ++) {
-        if (j == 18) cout << "4.Recharge";
+        if (j == 18) cout << "5.Recharge";
         else cout << " ";
     }
     cout << endl;
     for (int j = 0; j < 40; j ++) {
-        if (j == 18) cout << "5.Setting";
+        if (j == 18) cout << "6.Setting";
         else cout << " ";
     }
     cout << endl;
     if (View_Role() == "Administrator") {
         for (int j = 0; j < 33; j ++) {
-            if (j == 18) cout << "6.Administration";
+            if (j == 18) cout << "7.Administration";
             else cout << " ";
         }
         cout << endl;
@@ -1777,7 +2324,7 @@ void Main_Menu () {
         if (j == 18) cout << "0.Log-Out";
         else cout << " ";
     }
-    cout << endl;
+    cout << endl << endl;
     for (int j = 0; j < 40; j ++) {
         if (j == 36) cout << GetCurrentDate();
         else cout << " ";
@@ -1818,12 +2365,17 @@ void Main_Menu () {
         case '5':
             Side_Menu(5);
             system("cls");
-            if (!IsUserLogin) break;
             Main_Menu();
             if (!IsUserLogin) break;
         case '6':
+            Side_Menu(6);
+            system("cls");
+            if (!IsUserLogin) break;
+            Main_Menu();
+            if (!IsUserLogin) break;
+        case '7':
             if (View_Role() == "Administrator") {
-                Side_Menu(6);
+                Side_Menu(7);
                 system("cls");
                 Main_Menu();
                 if (!IsUserLogin) break;
@@ -1845,7 +2397,7 @@ void Login_Menu () {
         if (i == 12) cout << "Hotel Management System";
         else cout << "_";
     }
-    cout << endl;
+    cout << endl << endl;
     for (int j = 0; j < 42; j ++) {
         if (j == 19) cout << "1.Login";
         else cout << " ";
